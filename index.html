@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transcripción de Audio</title>
+    <style>
+        body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f0f0f0;
+}
+
+h1 {
+    text-align: center;
+    margin-top: 20px;
+}
+
+button {
+    display: block;
+    margin: 20px auto;
+    padding: 10px 20px;
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+#transcriptionResult {
+    display: none;
+    margin: 20px auto;
+    max-width: 600px;
+    background-color: white;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+#transcriptionText {
+    white-space: pre-wrap;
+}
+</style>
+</head>
+<body>
+    <h1>Transcripción de Audio</h1>
+    
+    <button id="startTranscription">Iniciar Transcripción</button>
+
+    <div id="transcriptionResult" class="hidden">
+        <h2>Resultado de la Transcripción:</h2>
+        <pre id="transcriptionText"></pre>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+// replace with your API token
+const YOUR_API_TOKEN = "58bb1f76c9e34117ab4b9b43b6cf7edc";
+
+// URL of the file to transcribe
+const FILE_URL = "https://youtu.be/4po6ul6i5yM";
+
+// AssemblyAI transcript endpoint (where we submit the file)
+const transcript_endpoint = "https://api.assemblyai.com/v2/transcript";
+
+// request parameters 
+const data = JSON.stringify({
+  audio_url: FILE_URL // You can also use a URL to an audio or video file on the web
+});
+
+// HTTP request headers
+const headers = {
+  "Authorization": YOUR_API_TOKEN,
+  "Content-Type": "application/json"
+};
+
+// submit for transcription via HTTP request
+fetch(transcript_endpoint, {
+  method: "POST",
+  headers: headers,
+  body: data
+})
+  .then(response => response.json())
+  .then(response => {
+    // polling for transcription completion
+    const pollingEndpoint = `https://api.assemblyai.com/v2/transcript/${response.id}`;
+
+    const pollTranscription = () => {
+      fetch(pollingEndpoint, {
+        method: "GET",
+        headers: headers
+      })
+        .then(response => response.json())
+        .then(transcriptionResult => {
+          if (transcriptionResult.status === 'completed') {
+            // print the results
+            const transcriptionTextElement = document.getElementById('transcriptionText');
+            transcriptionTextElement.textContent = transcriptionResult.text;
+
+              // Mostrar el elemento #transcriptionResult
+            const transcriptionResultElement = document.getElementById('transcriptionResult');
+            transcriptionResultElement.style.display = 'block';
+            //
+
+            console.log(transcriptionResult);
+          } else if (transcriptionResult.status === 'error') {
+            throw new Error(`Transcription failed: ${transcriptionResult.error}`);
+          } else {
+            setTimeout(pollTranscription, 3000);
+          }
+        })
+        .catch(error => console.error(error));
+    };
+
+    // Start polling for transcription completion
+    pollTranscription();
+
+  })
+  
+  .catch(error => console.error(error));
+
+</script>
+</body>
+</html>
